@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Deadline Reminder</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; background: #f5f7fb; margin: 0; padding: 20px; color: #1e293b; }
+    .container { background: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: auto; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
+    p { line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>Deadline Reminder</h2>
+  <p>This is a reminder that the following deadline is approaching.</p>
+  <p><b th:text="${deadlineName}">Deadline</b></p>
+  <p>Due date: <b th:text="${dueDate}">Date</b></p>
+  <p>Please complete your tasks before the deadline.</p>
+  <p>MentorLink</p>
+</div>
+</body>
+</html>

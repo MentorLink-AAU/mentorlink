@@ -1,0 +1,19 @@
+# Root dependencies/build outputs
+node_modules/
+frontend/node_modules/
+frontend/dist/
+backend/target/
+
+# Runtime-generated uploads and recommender outputs
+uploads/
+backend/uploads/
+backend/python-recommender/outputs/
+
+# Official local credential storage (never commit real secrets)
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
