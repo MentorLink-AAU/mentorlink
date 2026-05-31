@@ -9,7 +9,7 @@
     "start:frontend": "cd frontend && npm run dev",
     "start:nlp": "cd backend/nlp-summarization && python app.py",
     "setup": "npm install && cd frontend && npm install && cd ../backend/nlp-summarization && pip install -r requirements.txt",
-    "check:backend": "mvn -f backend/pom.xml test",
+    "check:backend": "cd backend && mvnw.cmd test",
     "check:frontend:test": "npm --prefix frontend run test:run",
     "check:frontend:lint": "npm --prefix frontend run lint",
     "check:all": "npm run check:backend && npm run check:frontend:test && npm run check:frontend:lint"

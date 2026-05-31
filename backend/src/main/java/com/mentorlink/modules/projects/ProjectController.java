@@ -19,8 +19,9 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @GetMapping("/{projectId}")
-    public ResponseEntity<ApiResponse<ProjectResponseDto>> getProject(@PathVariable Long projectId) {
-        return ResponseEntity.ok(ApiResponse.success(projectService.getById(projectId)));
+    public ResponseEntity<ApiResponse<ProjectResponseDto>> getProject(@PathVariable Long projectId,
+                                                                     Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success(projectService.getById(projectId, auth.getName())));
     }
 
     @PostMapping("/create")

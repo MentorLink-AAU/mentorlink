@@ -42,16 +42,18 @@ public class SubmissionController {
      * List submissions for a project (students, faculty, admin).
      */
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<ApiResponse<List<SubmissionResponseDto>>> listByProject(@PathVariable Long projectId) {
-        return ResponseEntity.ok(ApiResponse.success(submissionService.listByProject(projectId)));
+    public ResponseEntity<ApiResponse<List<SubmissionResponseDto>>> listByProject(@PathVariable Long projectId,
+                                                                                  Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success(submissionService.listByProject(projectId, auth.getName())));
     }
 
     /**
      * List submissions for a group (students, faculty, admin).
      */
     @GetMapping("/group/{groupId}")
-    public ResponseEntity<ApiResponse<List<SubmissionResponseDto>>> listByGroup(@PathVariable Long groupId) {
-        return ResponseEntity.ok(ApiResponse.success(submissionService.listByGroup(groupId)));
+    public ResponseEntity<ApiResponse<List<SubmissionResponseDto>>> listByGroup(@PathVariable Long groupId,
+                                                                                Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success(submissionService.listByGroup(groupId, auth.getName())));
     }
 
     /**

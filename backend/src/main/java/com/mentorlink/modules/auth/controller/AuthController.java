@@ -1,6 +1,7 @@
 package com.mentorlink.modules.auth.controller;
 
 import com.mentorlink.common.dto.ApiResponse;
+import com.mentorlink.common.exception.ApiException;
 import com.mentorlink.modules.auth.dto.*;
 import com.mentorlink.modules.auth.service.AuthService;
 import com.mentorlink.modules.auth.service.PasswordResetService;
@@ -11,6 +12,7 @@ import com.mentorlink.modules.users.entity.User;
 import com.mentorlink.modules.users.service.UserService;
 import com.mentorlink.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -91,7 +93,8 @@ public class AuthController {
                 .toList();
 
         if (requiredRole != null && !roles.contains(requiredRole)) {
-            throw new RuntimeException("Invalid role login");
+            throw new ApiException(HttpStatus.FORBIDDEN, "INVALID_ROLE",
+                    "This account cannot sign in with the selected role");
         }
 
         String token = jwtTokenProvider.generate(auth.getName(), roles);

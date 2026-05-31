@@ -12,6 +12,7 @@ import com.mentorlink.modules.submissions.entity.SubmissionCategory;
 import com.mentorlink.modules.submissions.repository.SubmissionRepository;
 import com.mentorlink.modules.users.UserRepository;
 import com.mentorlink.modules.users.entity.User;
+import com.mentorlink.service.ProjectAccessService;
 import com.mentorlink.util.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -40,6 +41,7 @@ public class SubmissionService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final ReportSummarizationService reportSummarizationService;
+    private final ProjectAccessService projectAccessService;
 
     /**
      * Student (group member) submits a file. One submission per category per project.
@@ -129,20 +131,22 @@ public class SubmissionService {
         submissionRepository.delete(submission);
     }
 
-    public List<SubmissionResponseDto> listByProject(Long projectId) {
+    public List<SubmissionResponseDto> listByProject(Long projectId, String requesterEmail) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Project not found"));
+        projectAccessService.requireProjectAccess(project, requesterEmail);
         return submissionRepository.findByProjectOrderByCategory(project).stream()
                 .map(SubmissionResponseDto::from)
                 .collect(Collectors.toList());
     }
 
-    public List<SubmissionResponseDto> listByGroup(Long groupId) {
+    public List<SubmissionResponseDto> listByGroup(Long groupId, String requesterEmail) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Group not found"));
+        projectAccessService.requireGroupAccess(group, requesterEmail);
         Project project = group.getProject();
         if (project == null) return List.of();
-        return listByProject(project.getId());
+        return listByProject(project.getId(), requesterEmail);
     }
 
     /**

@@ -12,6 +12,7 @@ import com.mentorlink.modules.summarization.entity.ReportSummaryStatus;
 import com.mentorlink.modules.summarization.repository.ReportSummaryRepository;
 import com.mentorlink.modules.users.UserRepository;
 import com.mentorlink.modules.users.entity.User;
+import com.mentorlink.service.ProjectAccessService;
 import com.mentorlink.util.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class ReportSummarizationService {
     private final ReportSummaryRepository reportSummaryRepository;
     private final FileStorageService fileStorageService;
     private final SummarizationAsyncService summarizationAsyncService;
+    private final ProjectAccessService projectAccessService;
 
     /**
      * Upload PDF, create PENDING summary, process async, return immediately.
@@ -115,9 +117,10 @@ public class ReportSummarizationService {
         summarizationAsyncService.processReportSummary(entity.getId());
     }
 
-    public List<ReportSummaryDto> listByProject(Long projectId) {
+    public List<ReportSummaryDto> listByProject(Long projectId, String requesterEmail) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ApiException(org.springframework.http.HttpStatus.NOT_FOUND, "NOT_FOUND", "Project not found"));
+        projectAccessService.requireProjectAccess(project, requesterEmail);
         return reportSummaryRepository.findByProjectOrderByCreatedAtDesc(project).stream()
                 .map(ReportSummaryDto::from)
                 .collect(Collectors.toList());

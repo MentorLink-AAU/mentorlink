@@ -12,6 +12,8 @@ import com.mentorlink.modules.groups.repository.GroupRepository;
 import com.mentorlink.modules.projects.repository.ProjectRepository;
 import com.mentorlink.modules.users.entity.User;
 import com.mentorlink.modules.users.UserRepository;
+import com.mentorlink.service.ProjectAccessService;
+import com.mentorlink.service.ProjectAccessService.AccessFlags;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class GroupService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final FacultyProfileRepository facultyProfileRepository;
+    private final ProjectAccessService projectAccessService;
 
     // ✅ Create a group with leader + project
     public GroupResponseDto createGroup(GroupRequestDto dto, Long leaderId) {
@@ -85,13 +88,26 @@ public class GroupService {
 
         Group saved = groupRepository.save(group);
 
-        return mapToResponse(saved);
+        return mapToResponse(saved, leader.getEmail());
     }
 
-    public GroupResponseDto getById(Long id) {
+    public GroupResponseDto getById(Long id, String viewerEmail) {
         Group group = groupRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Group not found"));
-        return mapToResponse(group);
+        projectAccessService.requireGroupAccess(group, viewerEmail);
+        return mapToResponse(group, viewerEmail);
+    }
+
+    /** Used by admin batch jobs where the caller is not a group member. */
+    public GroupResponseDto getByIdForSystem(Long id) {
+        Group group = groupRepository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Group not found"));
+        String adminEmail = userRepository.findAll().stream()
+                .filter(u -> u.getRoles().contains("ADMIN"))
+                .map(User::getEmail)
+                .findFirst()
+                .orElse("");
+        return mapToResponse(group, adminEmail);
     }
 
     public static final int MAX_GROUP_MEMBERS = 3;
@@ -122,7 +138,7 @@ public class GroupService {
         group.getMembers().add(student);
         Group saved = groupRepository.save(group);
 
-        return mapToResponse(saved);
+        return mapToResponse(saved, student.getEmail());
     }
 
     /** Faculty joins group as mentor using mentorJoinToken. No request/approval flow. */
@@ -150,9 +166,11 @@ public class GroupService {
         return group;
     }
 
-    // ✅ Mapper
-    private GroupResponseDto mapToResponse(Group group) {
+    private GroupResponseDto mapToResponse(Group group, String viewerEmail) {
         Project p = group.getProject();
+        AccessFlags flags = p != null
+                ? projectAccessService.resolveAccess(p, viewerEmail)
+                : groupOnlyAccessFlags(group, viewerEmail);
         List<MemberSummaryDto> members = group.getMembers().stream()
                 .map(m -> MemberSummaryDto.builder()
                         .userId(m.getId())
@@ -165,15 +183,26 @@ public class GroupService {
         return GroupResponseDto.builder()
                 .id(group.getId())
                 .name(group.getName())
-                .joinToken(group.getJoinToken())
-                .mentorJoinToken(group.getMentorJoinToken())
-                .projectId(p.getId())
-                .projectTitle(p.getTitle())
-                .projectDescription(p.getDescription())
+                .joinToken(projectAccessService.includeJoinToken(flags) ? group.getJoinToken() : null)
+                .mentorJoinToken(projectAccessService.includeMentorJoinToken(flags) ? group.getMentorJoinToken() : null)
+                .projectId(p != null ? p.getId() : null)
+                .projectTitle(p != null ? p.getTitle() : null)
+                .projectDescription(p != null ? p.getDescription() : null)
                 .leaderId(group.getLeader().getId())
                 .memberCount(group.getMembers().size())
                 .members(members)
                 .mentorName(mentorName)
                 .build();
+    }
+
+    private AccessFlags groupOnlyAccessFlags(Group group, String viewerEmail) {
+        User user = userRepository.findByEmail(viewerEmail).orElse(null);
+        if (user == null) {
+            return new AccessFlags(false, false, false, false);
+        }
+        boolean admin = user.getRoles().contains("ADMIN");
+        boolean faculty = user.getRoles().contains("FACULTY");
+        boolean member = group.getMembers().stream().anyMatch(m -> viewerEmail.equalsIgnoreCase(m.getEmail()));
+        return new AccessFlags(admin, faculty, member, false);
     }
 }

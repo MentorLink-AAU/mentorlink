@@ -2,7 +2,11 @@ package com.mentorlink.modules.recommender.service;
 
 import com.mentorlink.modules.faculty.entity.FacultyProfile;
 import com.mentorlink.modules.faculty.repository.FacultyProfileRepository;
+import com.mentorlink.modules.projects.entity.Project;
 import com.mentorlink.modules.projects.repository.ProjectRepository;
+import com.mentorlink.service.ProjectAccessService;
+import com.mentorlink.common.exception.ApiException;
+import org.springframework.http.HttpStatus;
 import com.mentorlink.modules.recommender.dto.FacultyRecommendationDto;
 import com.mentorlink.modules.recommender.dto.ProjectRecommendationRequest;
 import com.mentorlink.modules.recommender.dto.RecommendationResponse;
@@ -25,6 +29,7 @@ public class FacultyRecommendationService {
 
     private final FacultyProfileRepository facultyProfileRepository;
     private final ProjectRepository projectRepository;
+    private final ProjectAccessService projectAccessService;
 
     private static final int DEFAULT_TOP_N = 10;
 
@@ -131,19 +136,15 @@ public class FacultyRecommendationService {
     /**
      * Recommend faculty for an existing project (uses title, description, domain).
      */
-    public RecommendationResponse recommendForProject(Long projectId) {
-        return projectRepository.findById(projectId)
-                .map(p -> {
-                    ProjectRecommendationRequest req = new ProjectRecommendationRequest();
-                    req.setProjectTitle(p.getTitle());
-                    req.setProjectDescription(p.getDescription());
-                    req.setDomain(p.getDomain());
-                    return recommendFaculty(req);
-                })
-                .orElse(RecommendationResponse.builder()
-                        .projectDescription("")
-                        .recommendedFaculty(List.of())
-                        .build());
+    public RecommendationResponse recommendForProject(Long projectId, String requesterEmail) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Project not found"));
+        projectAccessService.requireProjectAccess(project, requesterEmail);
+        ProjectRecommendationRequest req = new ProjectRecommendationRequest();
+        req.setProjectTitle(project.getTitle());
+        req.setProjectDescription(project.getDescription());
+        req.setDomain(project.getDomain());
+        return recommendFaculty(req);
     }
 
     private String buildProjectText(ProjectRecommendationRequest request) {

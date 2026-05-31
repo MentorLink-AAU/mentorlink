@@ -1,6 +1,7 @@
 package com.mentorlink.modules.groups;
 
 import com.mentorlink.common.dto.ApiResponse;
+import com.mentorlink.common.exception.ApiException;
 import com.mentorlink.modules.faculty.dto.MentorshipRequestDto;
 import com.mentorlink.modules.faculty.dto.RequestMentorshipDto;
 import com.mentorlink.modules.faculty.entity.FacultyMentorshipRequest;
@@ -14,6 +15,7 @@ import com.mentorlink.modules.groups.entity.Group;
 import com.mentorlink.modules.users.UserRepository;
 import com.mentorlink.modules.users.entity.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -30,8 +32,10 @@ public class GroupController {
     private final FacultyMentorshipRequestService mentorshipRequestService;
 
     @GetMapping("/{groupId}")
-    public ResponseEntity<ApiResponse<GroupResponseDto>> getGroup(@PathVariable Long groupId) {
-        return ResponseEntity.ok(ApiResponse.success(groupService.getById(groupId)));
+    public ResponseEntity<ApiResponse<GroupResponseDto>> getGroup(@PathVariable Long groupId,
+                                                                  Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(
+                groupService.getById(groupId, authentication.getName())));
     }
 
     /** Create group; leader is the authenticated student. */
@@ -40,7 +44,7 @@ public class GroupController {
                                                                      Authentication authentication) {
         String email = authentication.getName(); // email comes from JWT
         User leader = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "User not found"));
 
         GroupResponseDto group = groupService.createGroup(dto, leader.getId());
         return ResponseEntity.ok(ApiResponse.success(group));
@@ -52,7 +56,7 @@ public class GroupController {
                                                                    Authentication authentication) {
         String email = authentication.getName(); // email comes from JWT
         User student = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "User not found"));
 
         GroupResponseDto group = groupService.joinGroup(token, student.getId());
         return ResponseEntity.ok(ApiResponse.success(group));
@@ -64,13 +68,13 @@ public class GroupController {
                                                                     Authentication authentication) {
         String email = authentication.getName();
         User facultyUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "User not found"));
         if (!facultyUser.getRoles().contains("FACULTY")) {
-            throw new RuntimeException("Only faculty can join as mentor");
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Only faculty can join as mentor");
         }
 
         var group = groupService.mentorJoinByToken(token, email);
-        return ResponseEntity.ok(ApiResponse.success(groupService.getById(group.getId())));
+        return ResponseEntity.ok(ApiResponse.success(groupService.getById(group.getId(), email)));
     }
 
     /** Student (group member) requests faculty mentorship for their group. */
@@ -81,12 +85,12 @@ public class GroupController {
             Authentication authentication) {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "User not found"));
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Group not found"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Group not found"));
         boolean isMember = group.getMembers().stream().anyMatch(m -> m.getId().equals(user.getId()));
         if (!isMember) {
-            throw new RuntimeException("Only group members can request faculty mentorship");
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Only group members can request faculty mentorship");
         }
         String projectTopic = dto.getProjectTopic() != null && !dto.getProjectTopic().isBlank()
                 ? dto.getProjectTopic() : (group.getProject() != null ? group.getProject().getTitle() : "Project");

@@ -78,7 +78,12 @@ public class SecurityConfig {
 
                         // 👨‍🏫 Faculty endpoints (list is for students too)
                         .requestMatchers("/api/faculty/list").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/faculty").hasRole("ADMIN")
                         .requestMatchers("/api/faculty/**").hasRole("FACULTY")
+
+                        // Legacy / diagnostic (admin only)
+                        .requestMatchers("/api/students/**").hasRole("ADMIN")
+                        .requestMatchers("/api/test/**").hasRole("ADMIN")
 
                         // 👑 Admin endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

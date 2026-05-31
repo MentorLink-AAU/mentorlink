@@ -16,6 +16,8 @@ import com.mentorlink.modules.projects.entity.Project;
 import com.mentorlink.modules.projects.repository.ProjectRepository;
 import com.mentorlink.modules.users.UserRepository;
 import com.mentorlink.modules.users.entity.User;
+import com.mentorlink.service.ProjectAccessService;
+import com.mentorlink.service.ProjectAccessService.AccessFlags;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,10 +31,17 @@ public class ProjectService {
     private final GroupRepository groupRepository;
     private final FacultyProfileRepository facultyProfileRepository;
     private final UserRepository userRepository;
+    private final ProjectAccessService projectAccessService;
 
-    public ProjectResponseDto getById(Long id) {
+    public ProjectResponseDto getById(Long id, String userEmail) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Project not found"));
+        projectAccessService.requireProjectAccess(project, userEmail);
+        return toResponseDto(project, userEmail);
+    }
+
+    private ProjectResponseDto toResponseDto(Project project, String userEmail) {
+        AccessFlags flags = projectAccessService.resolveAccess(project, userEmail);
         Group g = project.getGroup();
         return ProjectResponseDto.builder()
                 .id(project.getId())
@@ -42,8 +51,8 @@ public class ProjectService {
                 .techStack(project.getTechStack())
                 .progress(project.getProgress())
                 .groupId(g != null ? g.getId() : null)
-                .joinToken(g != null ? g.getJoinToken() : null)
-                .mentorJoinToken(g != null ? g.getMentorJoinToken() : null)
+                .joinToken(g != null && projectAccessService.includeJoinToken(flags) ? g.getJoinToken() : null)
+                .mentorJoinToken(g != null && projectAccessService.includeMentorJoinToken(flags) ? g.getMentorJoinToken() : null)
                 .hasMentor(project.getMentor() != null)
                 .build();
     }
@@ -72,17 +81,17 @@ public class ProjectService {
 
         project.setTitle(newTitle.trim());
         projectRepository.save(project);
-        return getById(projectId);
+        return toResponseDto(project, userEmail);
     }
 
     public Project updateProgress(Long projectId, int progress, String facultyEmail) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Project not found"));
         if (project.getMentor() == null) {
-            throw new RuntimeException("Project has no mentor assigned");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "NO_MENTOR", "Project has no mentor assigned");
         }
         if (!project.getMentor().getEmail().equals(facultyEmail)) {
-            throw new RuntimeException("Only assigned faculty can update progress");
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Only assigned faculty can update progress");
         }
         project.setProgress(progress);
         return projectRepository.save(project);

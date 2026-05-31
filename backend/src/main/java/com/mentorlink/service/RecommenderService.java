@@ -388,7 +388,7 @@ public class RecommenderService {
                     facultyProfileRepository.save(faculty);
                 }
 
-                createdGroups.add(groupService.getById(saved.getId()));
+                createdGroups.add(groupService.getByIdForSystem(saved.getId()));
                 persistedRows.add(RecommenderProjectGroup.builder()
                         .jobId(jobId)
                         .groupId(row.groupId())

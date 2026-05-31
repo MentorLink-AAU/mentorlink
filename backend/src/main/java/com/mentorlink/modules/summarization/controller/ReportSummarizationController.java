@@ -40,8 +40,9 @@ public class ReportSummarizationController {
      * List all report summaries for a project (for faculty dashboard, etc.)
      */
     @GetMapping("/{projectId}/summaries")
-    public ResponseEntity<ApiResponse<List<ReportSummaryDto>>> listSummaries(@PathVariable Long projectId) {
-        List<ReportSummaryDto> summaries = summarizationService.listByProject(projectId);
+    public ResponseEntity<ApiResponse<List<ReportSummaryDto>>> listSummaries(@PathVariable Long projectId,
+                                                                            Authentication auth) {
+        List<ReportSummaryDto> summaries = summarizationService.listByProject(projectId, auth.getName());
         return ResponseEntity.ok(ApiResponse.success(summaries));
     }
 }

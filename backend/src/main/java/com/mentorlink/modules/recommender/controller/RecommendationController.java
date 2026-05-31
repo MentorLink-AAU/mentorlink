@@ -6,6 +6,7 @@ import com.mentorlink.modules.recommender.dto.RecommendationResponse;
 import com.mentorlink.modules.recommender.service.FacultyRecommendationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 /** Faculty recommender: TF-IDF + cosine similarity on project description. */
@@ -46,8 +47,9 @@ public class RecommendationController {
      */
     @GetMapping("/mentor/project/{projectId}")
     public ResponseEntity<ApiResponse<RecommendationResponse>> recommendByProject(
-            @PathVariable Long projectId) {
-        RecommendationResponse response = facultyRecommendationService.recommendForProject(projectId);
+            @PathVariable Long projectId,
+            Authentication auth) {
+        RecommendationResponse response = facultyRecommendationService.recommendForProject(projectId, auth.getName());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
